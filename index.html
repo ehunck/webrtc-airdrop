@@ -8,7 +8,7 @@
   <style>
     body { font-family: sans-serif; padding: 1em; }
     textarea { width: 100%; height: 5em; }
-    #qr { margin-top: 1em; }
+    #qr, #qrAnswer { margin-top: 1em; }
     #fileInput { margin-top: 1em; }
     #downloadLink { display: block; margin-top: 1em; }
   </style>
@@ -41,7 +41,9 @@
 
       pc.onicecandidate = e => {
         if (!e.candidate) {
-          qr.value = JSON.stringify(pc.localDescription);
+          const offerStr = encodeURIComponent(JSON.stringify(pc.localDescription));
+          const url = `${location.origin}${location.pathname}?offer=${offerStr}`;
+          qr.value = url;
         }
       };
 
@@ -94,6 +96,16 @@
 
     document.getElementById("startSender").onclick = startSender;
     document.getElementById("startReceiver").onclick = startReceiver;
+
+    // Auto-fill offer from URL parameter
+    window.addEventListener('load', () => {
+      const params = new URLSearchParams(window.location.search);
+      const offer = params.get('offer');
+      if (offer) {
+        document.getElementById('offerInput').value = decodeURIComponent(offer);
+        document.getElementById('startReceiver').click();
+      }
+    });
   </script>
 </body>
 </html>
