@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AirDrop WebRTC (QR)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    textarea { width: 100%; height: 5em; }
+    #qr { margin-top: 1em; }
+    #fileInput { margin-top: 1em; }
+    #downloadLink { display: block; margin-top: 1em; }
+  </style>
+</head>
+<body>
+  <h1>AirDrop WebRTC (QR)</h1>
+  <button id="startSender">Start as Sender</button>
+  <button id="startReceiver">Start as Receiver</button>
+  <div id="senderUI" style="display:none">
+    <input type="file" id="fileInput">
+    <canvas id="qr"></canvas>
+    <textarea id="answerInput" placeholder="Paste answer here"></textarea>
+    <button id="connectBtn">Connect</button>
+  </div>
+  <div id="receiverUI" style="display:none">
+    <textarea id="offerInput" placeholder="Paste offer here"></textarea>
+    <button id="genAnswerBtn">Generate Answer</button>
+    <canvas id="qrAnswer"></canvas>
+    <a id="downloadLink"></a>
+  </div>
+
+  <script>
+    let pc, dataChannel;
+
+    async function startSender() {
+      document.getElementById("senderUI").style.display = "block";
+      pc = new RTCPeerConnection();
+      dataChannel = pc.createDataChannel("file");
+      const qr = new QRious({ element: document.getElementById("qr"), size: 300 });
+
+      pc.onicecandidate = e => {
+        if (!e.candidate) {
+          qr.value = JSON.stringify(pc.localDescription);
+        }
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      document.getElementById("connectBtn").onclick = async () => {
+        const answer = JSON.parse(document.getElementById("answerInput").value);
+        await pc.setRemoteDescription(answer);
+      };
+
+      document.getElementById("fileInput").addEventListener("change", e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = () => {
+          dataChannel.send(JSON.stringify({ name: file.name, data: Array.from(new Uint8Array(reader.result)) }));
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function startReceiver() {
+      document.getElementById("receiverUI").style.display = "block";
+      pc = new RTCPeerConnection();
+
+      pc.ondatachannel = e => {
+        const channel = e.channel;
+        channel.onmessage = e => {
+          const file = JSON.parse(e.data);
+          const blob = new Blob([new Uint8Array(file.data)]);
+          const link = document.getElementById("downloadLink");
+          link.href = URL.createObjectURL(blob);
+          link.download = file.name;
+          link.textContent = `Download ${file.name}`;
+        };
+      };
+
+      document.getElementById("genAnswerBtn").onclick = async () => {
+        const offer = JSON.parse(document.getElementById("offerInput").value);
+        await pc.setRemoteDescription(offer);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        const qr = new QRious({ element: document.getElementById("qrAnswer"), size: 300 });
+        qr.value = JSON.stringify(pc.localDescription);
+      };
+
+      pc.onicecandidate = () => {};
+    }
+
+    document.getElementById("startSender").onclick = startSender;
+    document.getElementById("startReceiver").onclick = startReceiver;
+  </script>
+</body>
+</html>
