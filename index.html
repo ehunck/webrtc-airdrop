@@ -12,6 +12,7 @@
     #fileInput { margin-top: 1em; }
     #downloadLink { display: block; margin-top: 1em; }
     #answerOutput { width: 100%; height: 5em; margin-top: 1em; }
+    #statusMessage { margin-top: 1em; font-weight: bold; color: green; }
   </style>
 </head>
 <body>
@@ -23,6 +24,7 @@
     <canvas id="qr"></canvas>
     <textarea id="answerInput" placeholder="Paste answer here"></textarea>
     <button id="connectBtn">Connect</button>
+    <div id="statusMessage"></div>
   </div>
   <div id="receiverUI" style="display:none">
     <textarea id="offerInput" placeholder="Paste offer here"></textarea>
@@ -50,6 +52,10 @@
         }
       };
 
+      dataChannel.onopen = () => {
+        document.getElementById("statusMessage").textContent = "Connected. You may now send a file.";
+      };
+
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
@@ -62,7 +68,11 @@
         const file = e.target.files[0];
         const reader = new FileReader();
         reader.onload = () => {
-          dataChannel.send(JSON.stringify({ name: file.name, data: Array.from(new Uint8Array(reader.result)) }));
+          if (dataChannel.readyState === "open") {
+            dataChannel.send(JSON.stringify({ name: file.name, data: Array.from(new Uint8Array(reader.result)) }));
+          } else {
+            alert("Connection not ready. Please wait until the data channel is open.");
+          }
         };
         reader.readAsArrayBuffer(file);
       });
