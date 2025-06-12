@@ -11,6 +11,7 @@
     #qr, #qrAnswer { margin-top: 1em; }
     #fileInput { margin-top: 1em; }
     #downloadLink { display: block; margin-top: 1em; }
+    #answerOutput { width: 100%; height: 5em; margin-top: 1em; }
   </style>
 </head>
 <body>
@@ -27,6 +28,8 @@
     <textarea id="offerInput" placeholder="Paste offer here"></textarea>
     <button id="genAnswerBtn">Generate Answer</button>
     <canvas id="qrAnswer"></canvas>
+    <textarea id="answerOutput" readonly></textarea>
+    <button id="copyAnswer">Copy Answer</button>
     <a id="downloadLink"></a>
   </div>
 
@@ -87,8 +90,16 @@
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
+        const answerStr = JSON.stringify(pc.localDescription);
         const qr = new QRious({ element: document.getElementById("qrAnswer"), size: 300 });
-        qr.value = JSON.stringify(pc.localDescription);
+        qr.value = answerStr;
+        document.getElementById("answerOutput").value = answerStr;
+      };
+
+      document.getElementById("copyAnswer").onclick = () => {
+        const output = document.getElementById("answerOutput");
+        output.select();
+        document.execCommand("copy");
       };
 
       pc.onicecandidate = () => {};
